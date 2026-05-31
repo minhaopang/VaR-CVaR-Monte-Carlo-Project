@@ -189,6 +189,52 @@ def load_market_data():
     }
 
 
+def _pretty_sector(col):
+    """'equity_econ_sector_consumer_cyclical_pct_net' -> 'Consumer Cyclical'."""
+    name = col.replace("equity_econ_sector_", "").replace("_pct_net", "")
+    return name.replace("_", " ").title()
+
+
+def _pretty_rating(col):
+    """'credit_qual_below_b_pct' -> 'Below B';  'credit_qual_aaa_pct' -> 'AAA'."""
+    name = col.replace("credit_qual_", "").replace("_pct", "")
+    special = {"below_b": "Below B", "not_rated": "Not Rated"}
+    if name in special:
+        return special[name]
+    return name.upper()
+
+
+def fund_classifications(data):
+    """Classify each fund for the sidebar filters:
+      * equity funds  -> primary (largest-weight) economic sector
+      * bond funds    -> dominant (largest-weight) credit-quality bucket
+    Returns dict with per-fund maps and the sorted lists of distinct labels."""
+    eq, bc = data["eq_sectors"], data["bond_credit"]
+    eq_cols = [c for c in eq.columns if c.startswith("equity_econ_sector")]
+    cr_cols = [c for c in bc.columns if c.startswith("credit_qual")]
+
+    eq_latest = eq.sort_values("as_of").groupby("ask_id")[eq_cols].last()
+    primary_sector = {}
+    for fid, row in eq_latest.iterrows():
+        vals = row.astype(float).fillna(0.0)
+        if vals.sum() > 0:
+            primary_sector[fid] = _pretty_sector(vals.idxmax())
+
+    cr_latest = bc.sort_values("as_of").groupby("ask_id")[cr_cols].last()
+    dom_rating = {}
+    for fid, row in cr_latest.iterrows():
+        vals = row.astype(float).fillna(0.0)
+        if vals.sum() > 0:
+            dom_rating[fid] = _pretty_rating(vals.idxmax())
+
+    return {
+        "primary_sector": primary_sector,
+        "dom_rating":     dom_rating,
+        "sectors":        sorted(set(primary_sector.values())),
+        "ratings":        sorted(set(dom_rating.values())),
+    }
+
+
 def fund_label(fid, metadata):
     """Human-readable label for a fund id, e.g. 'FLPSX — Fidelity Low-Priced Stock'."""
     if fid in metadata.index:
@@ -363,11 +409,93 @@ SCENARIOS = [
 ]
 
 
-def run_stress(fund_returns, selected_funds, stress_inputs, base_var, base_cvar,
-               alpha, n_sim, initial_value):
-    """Run all scenarios; return a list of dicts with stressed VaR/CVaR and deltas."""
+# ── Parametric scenario builder ───────────────────────────────────────────────
+# Lets the UI set different values per scenario. The defaults below exactly
+# reproduce the static SCENARIOS list above (tech −30, energy −40, rate +200,
+# credit IG/HY ×1, EM −25, broad ×1 + rate +150).
+DEFAULT_SCENARIO_CONFIG = {
+    "tech":   {"enabled": True, "tech_pct":   -30.0},
+    "energy": {"enabled": True, "energy_pct": -40.0},
+    "rate":   {"enabled": True, "rate_bps":   200.0},
+    "credit": {"enabled": True, "ig_mult": 1.0, "hy_mult": 1.0},
+    "em":     {"enabled": True, "em_pct":     -25.0},
+    "broad":  {"enabled": True, "intensity": 1.0, "rate_bps": 150.0},
+}
+
+
+def build_scenarios(cfg=None):
+    """Build a [(label, kwargs)] scenario list from a UI config dict.
+    Disabled scenarios are skipped; magnitudes come from the config."""
+    cfg = cfg or DEFAULT_SCENARIO_CONFIG
     out = []
-    for label, kwargs in SCENARIOS:
+
+    t = cfg["tech"]
+    if t["enabled"]:
+        out.append((f"Tech Crash {t['tech_pct']:+.0f}%",
+                    dict(eq_sec_shocks={"equity_econ_sector_technology_pct_net": t["tech_pct"] / 100})))
+
+    e = cfg["energy"]
+    if e["enabled"]:
+        out.append((f"Energy Shock {e['energy_pct']:+.0f}%",
+                    dict(eq_sec_shocks={"equity_econ_sector_energy_pct_net": e["energy_pct"] / 100})))
+
+    r = cfg["rate"]
+    if r["enabled"]:
+        out.append((f"Rate Spike {r['rate_bps']:+.0f} bps",
+                    dict(rate_shock_bps=r["rate_bps"])))
+
+    c = cfg["credit"]
+    if c["enabled"]:
+        ig, hy = c["ig_mult"], c["hy_mult"]
+        out.append((f"Credit Crisis\nIG×{ig:.1f} / HY×{hy:.1f}",
+                    dict(credit_shocks={
+                        "credit_qual_aaa_pct":     -0.01 * ig,
+                        "credit_qual_aa_pct":      -0.02 * ig,
+                        "credit_qual_a_pct":       -0.03 * ig,
+                        "credit_qual_bbb_pct":     -0.05 * ig,
+                        "credit_qual_bb_pct":      -0.08 * hy,
+                        "credit_qual_b_pct":       -0.12 * hy,
+                        "credit_qual_below_b_pct": -0.18 * hy,
+                    })))
+
+    m = cfg["em"]
+    if m["enabled"]:
+        v = m["em_pct"] / 100
+        out.append((f"EM Crisis {m['em_pct']:+.0f}%",
+                    dict(region_shocks={
+                        "equity_region_emerging_pct_net":      v,
+                        "equity_region_asia_emrg_pct_net":     v,
+                        "equity_region_latin_america_pct_net": v,
+                        "equity_region_europe_emrg_pct_net":   v * 0.8,
+                    })))
+
+    b = cfg["broad"]
+    if b["enabled"]:
+        k = b["intensity"]
+        out.append((f"Broad Crisis ×{k:.1f}",
+                    dict(eq_sec_shocks={
+                             "equity_econ_sector_technology_pct_net":         -0.25 * k,
+                             "equity_econ_sector_financial_services_pct_net": -0.20 * k,
+                             "equity_econ_sector_consumer_cyclical_pct_net":  -0.18 * k,
+                         },
+                         bond_sec_shocks={"fixed_inc_ps_corporate_bond_pct_net": -0.10 * k},
+                         rate_shock_bps=b["rate_bps"],
+                         credit_shocks={
+                             "credit_qual_bbb_pct": -0.04 * k,
+                             "credit_qual_bb_pct":  -0.07 * k,
+                             "credit_qual_b_pct":   -0.10 * k,
+                         },
+                         region_shocks={"equity_region_emerging_pct_net": -0.20 * k})))
+
+    return out
+
+
+def run_stress(fund_returns, selected_funds, stress_inputs, base_var, base_cvar,
+               alpha, n_sim, initial_value, scenarios=None):
+    """Run all scenarios; return a list of dicts with stressed VaR/CVaR and deltas."""
+    scenarios = scenarios if scenarios is not None else SCENARIOS
+    out = []
+    for label, kwargs in scenarios:
         shocks      = compute_fund_shocks(selected_funds,
                                           stress_inputs["eq_w"], stress_inputs["bond_w"],
                                           stress_inputs["credit_w"], stress_inputs["region_w"],
