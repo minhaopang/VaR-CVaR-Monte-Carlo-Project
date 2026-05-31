@@ -1,6 +1,7 @@
 # Mutual-Fund Portfolio Risk Tool — VaR, CVaR & Stress Testing
 
 **IEOR 4703 — Monte Carlo Simulation Methods (Hirsa) · Term Project**
+
 Minhao (Myron) Pang · Siyun (Cheryl) Yan
 
 A tool that lets a portfolio manager invest **$1,000,000 on behalf of a client**,

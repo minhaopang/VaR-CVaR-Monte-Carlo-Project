@@ -1,6 +1,6 @@
 """
 risk_engine.py
-==============
+
 Portfolio VaR / CVaR / stress-testing engine for the IEOR 4703 term project.
 
 This module is a faithful extraction of the analysis logic from
@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# ── Constants (match the notebook) ────────────────────────────────────────────
+# Constants (match the notebook) 
 DATA_DIR      = Path(__file__).resolve().parent / "data"
 STUDY_START   = pd.Timestamp("2005-12-31")
 STUDY_END     = pd.Timestamp("2024-12-31")
@@ -29,9 +29,9 @@ BOND_DUR: pd.Series = pd.Series(dtype=float)
 BOND_YTM: pd.Series = pd.Series(dtype=float)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+
 #  Monte-Carlo price imputation  (verbatim from the notebook)
-# ══════════════════════════════════════════════════════════════════════════════
+
 def _gbm_params(series):
     lr = np.log(series / series.shift(1)).dropna()
     if len(lr) < 20:
@@ -114,9 +114,9 @@ def impute_bond_prices_mc(prices_series, fid, max_ffill=MAX_FFILL, rng=None, kap
     return pd.Series(vals, index=prices_series.index, name=prices_series.name)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+
 #  Market-data loading  (one-shot; cache this in the app)
-# ══════════════════════════════════════════════════════════════════════════════
+
 def load_market_data():
     """Load prices, impute gaps, build the top-50 fund pool, and load the
     holdings files used for stress testing. Returns a dict consumed by the UI."""
@@ -245,9 +245,9 @@ def fund_label(fid, metadata):
     return fid
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+
 #  Core analysis  (verbatim from the notebook)
-# ══════════════════════════════════════════════════════════════════════════════
+
 def build_rolling_returns(prices_df, fund_ids, ts, te, tau, delta):
     """Rolling τ-horizon returns for an equal-weight portfolio."""
     p = prices_df.loc[pd.Timestamp(ts):pd.Timestamp(te), fund_ids].copy()
@@ -287,9 +287,9 @@ def compute_var_cvar(portfolio_returns, alpha, n_sim, initial_value, seed=0):
     }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+
 #  Stress testing  (verbatim from the notebook)
-# ══════════════════════════════════════════════════════════════════════════════
+
 def _latest_row(df, fund_ids, value_cols, id_col="ask_id", date_col="as_of"):
     rows = []
     for fid in fund_ids:
@@ -367,7 +367,7 @@ def apply_shocks(fund_returns_arr, fund_ids, shocks):
     return np.nanmean(stressed, axis=1)
 
 
-# Stress scenarios: (label, kwargs for compute_fund_shocks)  — same as notebook
+# Stress scenarios: (label, kwargs for compute_fund_shocks)  same as notebook
 SCENARIOS = [
     ("Tech Crash −30%",
      dict(eq_sec_shocks={"equity_econ_sector_technology_pct_net": -0.30})),
@@ -409,7 +409,7 @@ SCENARIOS = [
 ]
 
 
-# ── Parametric scenario builder ───────────────────────────────────────────────
+# Parametric scenario builder 
 # Lets the UI set different values per scenario. The defaults below exactly
 # reproduce the static SCENARIOS list above (tech −30, energy −40, rate +200,
 # credit IG/HY ×1, EM −25, broad ×1 + rate +150).
@@ -511,9 +511,9 @@ def run_stress(fund_returns, selected_funds, stress_inputs, base_var, base_cvar,
     return out
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+
 #  Convenience wrappers used by the UI
-# ══════════════════════════════════════════════════════════════════════════════
+
 DELTA_LABEL = {1: "daily", 5: "weekly", 22: "monthly", 66: "quarterly"}
 
 

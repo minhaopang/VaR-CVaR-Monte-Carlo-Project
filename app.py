@@ -1,6 +1,6 @@
 """
 app.py — Portfolio VaR / CVaR / Stress-Testing dashboard
-========================================================
+
 A Streamlit front-end over ``risk_engine.py`` for the portfolio manager.
 
 Run with:
@@ -26,7 +26,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 import risk_engine as eng
 
-# ── Page + style ──────────────────────────────────────────────────────────────
+#  Page + style 
 st.set_page_config(page_title="Portfolio VaR / CVaR Dashboard",
                    page_icon="📉", layout="wide")
 sns.set_theme(style="whitegrid", palette="muted")
@@ -64,9 +64,8 @@ pool_by_aum = latest_aum.reindex(fund_pool).sort_values(ascending=False).index.t
 labels      = {fid: eng.fund_label(fid, metadata) for fid in pool_by_aum}
 
 
-# ══════════════════════════════════════════════════════════════════════════════
 #  Sidebar — fund selection with search / type filter
-# ══════════════════════════════════════════════════════════════════════════════
+
 st.sidebar.title("⚙️  Portfolio setup")
 st.sidebar.caption("Capital fixed at **$1,000,000**, distributed equally.")
 
@@ -152,9 +151,8 @@ run_sweeps = st.sidebar.checkbox("Run sensitivity sweeps (d, δ, τ)", value=Tru
 INITIAL_VALUE = eng.INITIAL_VALUE
 
 
-# ══════════════════════════════════════════════════════════════════════════════
 #  Header + export slot (filled at the end, once all figures exist)
-# ══════════════════════════════════════════════════════════════════════════════
+
 st.title("📉  Portfolio VaR / CVaR & Stress Testing")
 
 if d == 0:
@@ -177,7 +175,7 @@ def show(fig, caption):
     report_figs.append((caption, fig))
 
 
-# ── Core analysis ──────────────────────────────────────────────────────────────
+# Core analysis 
 analysis = eng.run_analysis(data, selected_funds, TS, TE, tau, delta, alpha,
                             n_sim, INITIAL_VALUE)
 results  = analysis["results"]
@@ -190,9 +188,9 @@ if L < 5:
     st.stop()
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+
 #  Results summary
-# ══════════════════════════════════════════════════════════════════════════════
+
 st.header("Results summary")
 
 c1, c2, c3, c4 = st.columns(4)
@@ -217,9 +215,9 @@ with st.expander("Holdings & distribution detail"):
         f"excess kurtosis **{pd.Series(pr).kurtosis():.2f}**")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+
 #  Return distribution
-# ══════════════════════════════════════════════════════════════════════════════
+
 st.header("Simulated return distribution")
 
 sim, var_r, cvar_r = results["sim"], results["VaR_return"], results["CVaR_return"]
@@ -270,9 +268,8 @@ plt.tight_layout()
 show(fig2, "Rolling portfolio returns")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
 #  Sensitivity sweeps
-# ══════════════════════════════════════════════════════════════════════════════
+
 if run_sweeps:
     st.header("Sensitivity analysis")
     with st.spinner("Running sweeps …"):
@@ -319,9 +316,9 @@ if run_sweeps:
     show(fig, "Sensitivity: VaR & CVaR vs. rolling step δ")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+
 #  Stress testing (with per-scenario, PM-editable values)
-# ══════════════════════════════════════════════════════════════════════════════
+
 stress_rows = None
 if run_stress:
     st.header("Stress testing")
@@ -408,9 +405,9 @@ if run_stress:
                 f"stressed CVaR ${worst['CVaR']:,.0f} (Δ ${worst['dCVaR']:+,.0f}).")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+
 #  Client-report export (CSV + PDF)
-# ══════════════════════════════════════════════════════════════════════════════
+
 stamp   = dt.datetime.now().strftime("%Y%m%d_%H%M")
 summary_lines = [
     f"Generated      : {dt.datetime.now():%Y-%m-%d %H:%M}",
