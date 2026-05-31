@@ -33,7 +33,7 @@ python3 -m pip install -r requirements.txt
 python3 -m streamlit run app.py
 ```
 
-Your browser opens automatically at `http://localhost:8501`. That's the whole tool — no coding required.
+Your browser opens automatically at `http://localhost:8501`. 
 
 > The first load takes a few seconds because the app reads the price history and fills in missing
 > prices. After that it's instant; results update as soon as you change any control.
@@ -117,7 +117,7 @@ At the top of the page, **📄 Export client report** gives two downloads:
 
 ---
 
-## How the numbers are calculated (in plain terms)
+## How the numbers are calculated 
 
 1. **Filling gaps in the price history.** Some funds are missing prices on some days. Short gaps are
    carried forward; gaps with a known price on both sides are bridged; open-ended gaps are simulated.
@@ -133,9 +133,6 @@ At the top of the page, **📄 Export client report** gives two downloads:
 5. **Stress testing.** Each scenario shifts the historical returns down by a fund-specific shock and
    the VaR/CVaR are recomputed — showing how much the chosen crisis would add to the risk.
 
-> *Does it matter whether returns are annualized?* No — VaR and CVaR are horizon-specific dollar
-> losses, so annualizing only rescales the returns and leaves the dollar VaR/CVaR unchanged. The tool
-> works directly at the τ horizon.
 
 ---
 
