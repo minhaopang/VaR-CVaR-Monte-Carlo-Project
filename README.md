@@ -48,7 +48,7 @@ Your browser opens automatically at `http://localhost:8501`.
 | **`risk_engine.py`** | The "calculation engine." Loads the data, fills missing prices, builds the return distributions, and computes VaR, CVaR, and the stress scenarios. This is the same logic as the notebook, packaged so the app can reuse it. |
 | **`IEOR_4703_Term_Project.ipynb`** | The original Jupyter notebook — the full step-by-step analysis and explanations for the d = 10 example portfolio. Read this to understand the methodology. |
 | **`requirements.txt`** | The list of Python packages the project needs. |
-| **`data/`** | The provided dataset: daily prices for the 50 funds plus their holdings (sectors, credit quality, duration/yield, region, fund size). The app reads everything from here. |
+| **`data/`** | The dataset is excluded from this repository for security reasons. Please upload your own dataset to use this tool. |
 
 ---
 
