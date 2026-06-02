@@ -1,6 +1,6 @@
 # Mutual-Fund Portfolio Risk Tool — VaR, CVaR & Stress Testing
 
-**IEOR 4703 — Monte Carlo Simulation Methods (Hirsa) · Term Project**
+**IEOR 4703 — Monte Carlo Simulation Methods (Professor Ali Hirsa) · Term Project**
 
 Minhao (Myron) Pang · Siyun (Cheryl) Yan
 
